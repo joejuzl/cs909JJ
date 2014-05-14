@@ -11,9 +11,6 @@ from gensim import corpora, models, similarities
 from collections import defaultdict
 
 pp = pprint.PrettyPrinter(indent=4)
-
-# nltk.download()
-
 path1 = "reuters/reut2-00"
 path2 = "reuters/reut2-0"
 extension = ".sgm"
@@ -26,8 +23,6 @@ def extract(data):
 		return ""
 	else:
 		return data.text.encode('ascii', errors='backslashreplace')
-	
-
 
 # print csv		
 def toCSV(blop,filename):
@@ -199,7 +194,8 @@ def extractLDAFeatureSet(data, numberOfFeatures,  topTen, fromPickle):
 	cPickle.dump(trainset, open("ldaTrain.p", "wb" ))
 	cPickle.dump(testset, open("ldaTest.p", "wb" ))
 	return trainset,testset
-	
+
+#extract unigrams as features
 def extractUnigramFeatureSet(data, numberOfFeatures, topTen, fromPickle):
 	if fromPickle:
 		return cPickle.load(open("uniTrain.p", "rb")),cPickle.load(open("uniTest.p", "rb"))
@@ -239,7 +235,8 @@ def extractUnigramFeatureSet(data, numberOfFeatures, topTen, fromPickle):
 	cPickle.dump(trainset, open("uniTrain.p", "wb" ))
 	cPickle.dump(testset, open("uniTest.p", "wb" ))
 	return trainset,testset
-	
+
+#extract bigrams as features	
 def extractBigramFeatureSet(data, numberOfFeatures, topTen, fromPickle):
 	if fromPickle:
 		return cPickle.load(open("biTrain.p", "rb")),cPickle.load(open("biTest.p", "rb"))
@@ -286,6 +283,7 @@ def extractBigramFeatureSet(data, numberOfFeatures, topTen, fromPickle):
 	cPickle.dump(testset, open("biTest.p", "wb" ))
 	return trainset,testset
 
+#extract tfidf scores as features
 def extractTfidfFeatureSet(data, numberOfFeatures, topTen, fromPickle):
 	if fromPickle:
 		return cPickle.load(open("uniTrain.p", "rb")),cPickle.load(open("uniTest.p", "rb"))
@@ -327,6 +325,7 @@ def extractTfidfFeatureSet(data, numberOfFeatures, topTen, fromPickle):
 	cPickle.dump(testset, open("uniTest.p", "wb" ))
 	return trainset,testset
 	
+#find the n most populous classes
 def popClasses(data,num):
 	topics = {}
 	for i in range(len(data)):
@@ -341,21 +340,21 @@ def popClasses(data,num):
 	
 
 	
-	
-docs = processData(loadSGM(True), 21578, True)
+#This parses the data from the reuters corpus and then pre-processes the data. 
+#If the pickle flags are set to true it will load from a file, else it will write the data to a file and can be loaded next time.
+docs = processData(loadSGM(fromPickle=False), 21578, fromPickle=False)
 
-
+#this extracts the most populous classes from the corpus
 topTopics = popClasses(docs,10)
 
 
-#extract features
-
+#extract features and seperate the data into the training and testing sets.
 #trainset, testset = extractUnigramFeatureSet(docs, 50, topTopics, False)
 #trainset, testset = extractTfidfFeatureSet(docs, 50, topTopics, False)
 #trainset, testset = extractBigramFeatureSet(docs, 50, topTopics, False)
-trainset, testset = extractLDAFeatureSet(docs,10, topTopics, False)
+trainset, testset = extractLDAFeatureSet(docs,10, topTopics, fromPickle=False)
 
-
+#convert the data to CSV
 toCSV(trainset,"ldaTrain")
 toCSV(testset,"ldaTest")
 
