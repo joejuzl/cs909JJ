@@ -1,0 +1,97 @@
+c1 <- function(data, k, type)
+{ 
+	#randomise order
+	data <- data[sample(nrow(data),nrow(data)),]
+
+	#normalise data
+	for(i in 1:(length(data[1,])-1))
+	{
+		data[,i] <- data[,i] - min(data[,i])
+		data[,i] <- data[,i] / max(data[,i])
+	}
+
+	size <- length(data[,1])
+	width <- round(size/k)
+	pos <- width
+	tests <- list()
+	training <- list()
+	
+	#split into k folds
+	for(i in 1:k)
+	{
+		x <- min(pos,size)
+		tests[[i]] <- data[(pos-width+1):x,]
+		training[[i]] <- data[-(pos-width+1):-x,]
+		pos <- pos+width
+	}
+	
+	numClasses <- length(unique(data[,length(data)]))
+	output <- list()
+	sumFold <- table(data[,length(data)], data[,length(data)])
+	allRecall <- replicate(numClasses,0)
+	allPrecision <- replicate(numClasses,0)
+	#loop through folds
+	for(i in 1:k)
+	{
+		#predict and produce confusion tables
+		if(type==1)
+			conf <- table(predict(naiveBayes(Class~.,data=training[[i]]),tests[[i]]), tests[[i]][,length(data)])
+		else if(type==2)
+			conf <- table(predict(svm(Class~.,data=training[[i]]),tests[[i]]), tests[[i]][,length(data)])
+		else
+			conf <- table(predict(randomForest(Class~., data=training[[i]]),tests[[i]]), tests[[i]][,length(data)])
+			
+		#calc precision and recall	
+		foldtable <- data.frame(class=rownames(conf),recall=c(1:numClasses),precision=c(1:numClasses))
+		recall <- c(1:numClasses)
+		precision <- c(1:numClasses)
+		totalCorrect <- 0
+		for(j in 1:numClasses)
+		{
+			recall[j] <- conf[j,j]/sum(conf[j,])
+			precision[j] <- conf[j,j]/sum(conf[,j])				
+			totalCorrect <- totalCorrect+conf[j,j]
+		}
+		recall[is.nan(recall)] <- 0	
+		precision[is.nan(precision)] <- 0	
+		allRecall = allRecall+recall
+		allPrecision = allPrecision+precision
+		accuracy <- totalCorrect/sum(conf)
+		foldtable[,2] <- recall
+		foldtable[,3] <- precision
+		foldlist <- list("table"=foldtable,"accuracy"=accuracy)
+		output[[i]] <- foldlist
+		if(i==1)
+			sumFold <- conf
+		else
+			sumFold <- sumFold+conf
+	}
+	
+	foldtable <- data.frame(class=rownames(conf),macro.recall=c(1:numClasses),micro.recall=c(1:numClasses),macro.precision=c(1:numClasses),micro.precision=c(1:numClasses),macro.f=c(1:numClasses),micro.f=c(1:numClasses))
+	
+	#micro precision and recall
+	microRecall <- c(1:numClasses)
+	microPrecision <- c(1:numClasses)
+	for(j in 1:numClasses)
+	{
+		microRecall[j] <- sumFold[j,j]/sum(sumFold[j,])
+		microPrecision[j] <- sumFold[j,j]/sum(sumFold[,j])		
+	}
+	microRecall[is.nan(microRecall)] <- 0	
+	microPrecision[is.nan(microPrecision)] <- 0	
+	macroRecall <- allRecall/k
+	macroPrecision <- allPrecision/k
+	macroF <- (2*macroPrecision*macroRecall)/(macroPrecision+macroRecall)
+	microF <- (2*microPrecision*microRecall)/(microPrecision+microRecall)
+	macroF[is.nan(macroF)] <- 0	
+	microF[is.nan(microF)] <- 0
+	foldtable[,2] <- macroRecall
+	foldtable[,3] <- microRecall
+	foldtable[,4] <- macroPrecision
+	foldtable[,5] <- microPrecision
+	foldtable[,6] <- macroF
+	foldtable[,7] <- microF
+	output[[length(output)+1]] <- foldtable
+	return(output)
+
+}

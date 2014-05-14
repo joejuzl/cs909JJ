@@ -1,0 +1,50 @@
+cF <- function(train, test, type)
+{ 
+
+	#normalise data
+	for(i in 1:(length(test[1,])-1))
+	{
+		test[,i] <- test[,i] - min(test[,i])
+		test[,i] <- test[,i] / max(test[,i])
+	}
+	for(i in 1:(length(train[1,])-1))
+	{
+		train[,i] <- train[,i] - min(train[,i])
+		train[,i] <- train[,i] / max(train[,i])
+	}
+
+	numClasses <- length(unique(train[,length(train)]))
+	output <- list()
+	sumFold <- table(train[,length(train)], train[,length(train)])
+	allRecall <- replicate(numClasses,0)
+	allPrecision <- replicate(numClasses,0)
+
+
+	#predict and produce confusion tables
+	if(type==1)
+		conf <- table(predict(naiveBayes(Class~.,data=train),test), test[,length(test)])
+	else if(type==2)
+		conf <- table(predict(svm(Class~.,data=train),test), test[,length(test)])
+	else
+		conf <- randomForest(Class~., data=train)$confusion[,1:numClasses]
+		
+	#calc precision and recall	
+	foldtable <- data.frame(class=rownames(conf),recall=c(1:numClasses),precision=c(1:numClasses))
+	recall <- c(1:numClasses)
+	precision <- c(1:numClasses)
+	totalCorrect <- 0
+	for(j in 1:numClasses)
+	{
+		recall[j] <- conf[j,j]/sum(conf[j,])
+		precision[j] <- conf[j,j]/sum(conf[,j])				
+		totalCorrect <- totalCorrect+conf[j,j]
+	}
+	recall[is.nan(recall)] <- 0	
+	precision[is.nan(precision)] <- 0		
+	accuracy <- totalCorrect/sum(conf)
+	foldtable[,2] <- recall
+	foldtable[,3] <- precision
+	foldlist <- list("table"=foldtable,"accuracy"=accuracy)
+	return(foldlist)
+
+}
